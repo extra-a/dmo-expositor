@@ -1,0 +1,28 @@
+{
+  "name": "dmo-expositor",
+  "version": "1.0.0",
+  "description": "Sauerbraten demo expositor",
+  "main": "index.js",
+  "scripts": {
+    "start": "node build/src/main.js",
+    "build": "tsc -p tsconfig.json",
+    "package": "esbuild ./src/main.ts --bundle --platform=node --outfile=dist/main.cjs && pkg ./dist/main.cjs --out-path=./build -t latest-linux --compress GZip",
+    "build:watch": "tsc -w -p tsconfig.json"
+  },
+  "type": "module",
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/minimist": "^1.2.2",
+    "@types/ndjson": "^2.0.1",
+    "@types/node": "^18.11.9",
+    "esbuild": "^0.15.12",
+    "pkg": "^5.8.0",
+    "tslib": "^2.4.1",
+    "typescript": "^4.8.4"
+  },
+  "dependencies": {
+    "minimist": "^1.2.7",
+    "ndjson": "^2.0.0"
+  }
+}
