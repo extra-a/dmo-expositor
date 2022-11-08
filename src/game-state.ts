@@ -1,7 +1,15 @@
-import { GameData, InterpolatedValue, Ping, Position, Vec3 } from "./types.js";
+import { GameData, InterpolatedValue, Ping, Position, Vec3, GamePlayEvent } from "./types.js";
+import itree from 'node-interval-tree'
+const IntervalTree = itree.default;
+
+type CNed = {
+  cn: number;
+}
+
+export type Filter = itree.default<GamePlayEvent & CNed>;
 
 export class GameState {
-  constructor(public state: GameData) {
+  constructor(public state: GameData, public maxTimestamp: number) {
   }
 
   getPing(cn: number, ts: number): InterpolatedValue<Ping> | void {
@@ -19,35 +27,48 @@ export class GameState {
   getPos(cn: number, ts: number, adjustToCn?: number): InterpolatedValue<Position> | void {
     let adjust = 0;
     if (adjustToCn) {
-      adjust = this.getAdjust(cn, adjustToCn, ts);
+      adjust = this.getAdjust(adjustToCn, ts);
     }
 
     const cnData = this.state.get(cn);
     if (!cnData) {
       return;
     }
-    const vals = cnData.pos.getInterval(ts + adjustToCn);
+    const vals = cnData.pos.getInterval(ts + adjust);
     if (!vals) {
       return;
     }
     return this.interpolatePos(ts, vals, adjust);
   }
 
-  getAdjust(cn: number, adjustToCn: number, ts: number) {
+  getAdjust(adjustToCn: number, ts: number) {
     let adjust = 0;
-    if (cn === adjustToCn) {
-      return 0;
-    }
-    const p1 = this.getPing(cn, ts);
-    const p2 = this.getPing(adjustToCn, ts);
-    if (p1) {
-      adjust -= p1.value.ping / 2;
-    }
-    if (p2) {
-      adjust -= p2.value.ping / 2;
+    const ping = this.getPing(adjustToCn, ts);
+    if (ping) {
+      adjust -= ping.value.ping / 2;
     }
     adjust -= 34/2 // server tick avg delay approximation
     return adjust;
+  }
+
+  makeEventFilter(cn: number, offset: number, filter: (ev: GamePlayEvent) => boolean): Filter {
+    const tree = new IntervalTree<GamePlayEvent & CNed>();
+    for (const ev of this.state.get(cn)!.game) {
+      if (filter(ev)) {
+        tree.insert((ev.timestamp - offset), ev.timestamp, {cn, ...ev});
+      }
+    }
+    return tree;
+  }
+
+  reduceFiltered<T>(filter: Filter, initial: T, fn: (acc: T, ts: number, causeEvent: GamePlayEvent & CNed) => T) {
+    let acc = initial;
+    for (const intervalData of filter.inOrder()) {
+      for (let ts = intervalData.low; ts <= intervalData.high; ts++) {
+        acc = fn(acc, ts, intervalData.data);
+      }
+    }
+    return acc;
   }
 
   private interpolatePing(timestamp: number, [start, end]: [Ping, Ping]): InterpolatedValue<Ping> {
@@ -61,7 +82,7 @@ export class GameState {
   }
 
   private interpolatePos(timestamp: number, [start, end]: [Position, Position], adjust: number): InterpolatedValue<Position> {
-    const [yaw, pitch, rol] = (['yaw', 'pitch', 'rol'] as const).map((prop) => {
+    const [yaw, pitch, roll] = (['yaw', 'pitch', 'roll'] as const).map((prop) => {
       return this.linInterpolate(timestamp, start.timestamp, start[prop], end.timestamp, end[prop]);
     });
     const pos = this.interpolateVec3(timestamp, start.pos, start.timestamp, end.pos, end.timestamp);
@@ -72,7 +93,7 @@ export class GameState {
       timestamp,
       yaw,
       pitch,
-      rol,
+      roll,
       pos,
       vel
     }

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "minimist": "^1.2.7",
-    "ndjson": "^2.0.0"
+    "ndjson": "^2.0.0",
+    "node-interval-tree": "^2.0.1"
   }
 }

@@ -1,6 +1,5 @@
 import { EvSeq, TimeStamped } from "./ev-seq.js";
 
-export type Vec2 = [number, number];
 export type Vec3 = [number, number, number];
 
 export const gunNames = ['FIST', 'SG', 'CG', 'RL', 'RIFLE', 'GL', 'PISTOL'] as const;
@@ -10,7 +9,7 @@ export type Position = {
   type: 'POS';
   yaw: number;
   pitch: number;
-  rol: number;
+  roll: number;
   pos: Vec3,
   vel: Vec3,
 } & TimeStamped;

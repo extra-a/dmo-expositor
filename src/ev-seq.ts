@@ -9,6 +9,7 @@ interface Bucket<T extends TimeStamped> {
 
 export class EvSeq<T extends TimeStamped> {
   events: Bucket<T>[]= [];
+
   constructor(private granularity = 1000) {
     this.events.push({ start: 0, data: [] });
   }
@@ -30,6 +31,7 @@ export class EvSeq<T extends TimeStamped> {
     }
     const curLen = bucket.data.length;
     const endIntervalIdx = this.findEnd(bucket.data, ts);
+
     if (endIntervalIdx < 0) {
       return;
     }
@@ -38,15 +40,15 @@ export class EvSeq<T extends TimeStamped> {
       if (prevLen === 0) {
         return;
       }
-      return [prevBucket[prevLen-1], bucket[0]];
+      return [prevBucket.data[prevLen-1], bucket.data[0]];
     } else if (endIntervalIdx === curLen) {
       const nextLen = nextBucket?.data.length ?? 0;
       if (nextLen === 0) {
         return;
       }
-      return [bucket[curLen-1], nextBucket[0]];
+      return [bucket.data[curLen-1], nextBucket.data[0]];
     } else {
-      return [bucket[endIntervalIdx-1], bucket[endIntervalIdx]];
+      return [bucket.data[endIntervalIdx-1], bucket.data[endIntervalIdx]];
     }
   }
 

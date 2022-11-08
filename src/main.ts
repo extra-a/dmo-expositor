@@ -2,7 +2,7 @@ import ndjson from 'ndjson';
 import { pipeline } from 'node:stream/promises';
 import parseArgs from 'minimist';
 import fs from 'node:fs';
-import { GameReader } from './reader.js';
+import { GameReader } from './lib.js';
 
 
 async function main() {

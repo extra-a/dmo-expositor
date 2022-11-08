@@ -4,6 +4,7 @@ import { GameState } from "./game-state.js";
 export class GameReader {
   private data: GameData = new Map();
   private spawned = new Set<number>();
+  private maxTs = 0;
   private isPause = false;
 
   getStreamConsumer() {
@@ -17,19 +18,22 @@ export class GameReader {
   }
 
   getData() {
-    return new GameState(this.data);
+    return new GameState(this.data, this.maxTs);
   }
 
   private postProcess() {
     const gameData: GameData = new Map();
     for (const cn of this.spawned) {
-      gameData.set(cn, this.data.get(cn));
+      gameData.set(cn, this.data.get(cn)!);
     }
     this.data = gameData;
   }
 
   private parseEvent(data: any) {
     const {timestamp, cn} = data;
+    if (timestamp > this.maxTs) {
+      this.maxTs = timestamp;
+    }
     if (data.msg === 'N_PAUSEGAME') {
       this.isPause = data.isPause;
       return;
@@ -39,10 +43,10 @@ export class GameReader {
         if (this.isPause) {
           return;
         }
-        const { yaw, pitch, rol, pos, vel } = data;
+        const { yaw, pitch, roll, pos, vel } = data;
         const ev = {
           type: 'POS' as const,
-          timestamp, yaw, pitch, rol, pos, vel
+          timestamp, yaw, pitch, roll, pos, vel
         };
         this.addEvent(ev, cn);
         return;
