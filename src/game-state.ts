@@ -1,12 +1,14 @@
-import { GameData, InterpolatedValue, Ping, Position, Vec3, GamePlayEvent } from "./types.js";
+import { GameData, InterpolatedValue, Ping, Position, Vec3, GameEvent } from "./types.js";
 import itree from 'node-interval-tree'
 const IntervalTree = itree.default;
 
-type CNed = {
-  cn: number;
-}
-
-export type Filter = itree.default<GamePlayEvent & CNed>;
+export type FilterItem<T> = Array<NonNullable<T>>;
+export type Filter<T> = itree.default<FilterItem<T>>;
+export type Offsets = {
+  before: number;
+  after: number;
+  mergeOverlap?: boolean;
+};
 
 export class GameState {
   constructor(public state: GameData, public maxTimestamp: number) {
@@ -51,20 +53,37 @@ export class GameState {
     return adjust;
   }
 
-  makeEventFilter(cn: number, offset: number, filter: (ev: GamePlayEvent) => boolean): Filter {
-    const tree = new IntervalTree<GamePlayEvent & CNed>();
-    for (const ev of this.state.get(cn)!.game) {
-      if (filter(ev)) {
-        tree.insert((ev.timestamp - offset), ev.timestamp, {cn, ...ev});
+  makeEventFilter<T>(cn: number, filter: (ev: GameEvent) => T, offseter?: (data: T) => Offsets, kind: 'game' | 'pos' = 'game') {
+    const tree: Filter<NonNullable<T>> = new IntervalTree();
+    let prevStart = 0;
+    let prevEnd = 0;
+    let prevEv: FilterItem<T> = [];
+    for (const ev of this.state.get(cn)![kind]) {
+      const data = filter(ev);
+      if (data != null) {
+        const offsets = offseter ? offseter(data) : { before: 0, after: 0, mergeOverlap: false };
+        const currStart = ev.timestamp - offsets.before;
+        const currEnd = ev.timestamp + offsets.after;
+        if (!offsets.mergeOverlap || currStart > prevEnd) {
+          prevStart = currStart;
+          prevEnd = currEnd;
+          prevEv = [data];
+          tree.insert(prevStart, prevEnd, prevEv);
+        } else {
+          tree.remove(prevStart, prevEnd, prevEv);
+          prevEv.push(data);
+          prevEnd = currEnd;
+          tree.insert(prevStart, prevEnd, prevEv);
+        }
       }
     }
     return tree;
   }
 
-  reduceFiltered<T>(filter: Filter, initial: T, fn: (acc: T, ts: number, causeEvent: GamePlayEvent & CNed) => T) {
+  reduceFiltered<T, U>(filter: Filter<U>, initial: T, fn: (acc: T, ts: number, filterData: FilterItem<U>) => T, resolution = 1) {
     let acc = initial;
     for (const intervalData of filter.inOrder()) {
-      for (let ts = intervalData.low; ts <= intervalData.high; ts++) {
+      for (let ts = intervalData.low; ts <= intervalData.high; ts+=resolution) {
         acc = fn(acc, ts, intervalData.data);
       }
     }

@@ -52,6 +52,14 @@ export class EvSeq<T extends TimeStamped> {
     }
   }
 
+  *[Symbol.iterator]() {
+    for (const bucket of this.events) {
+      for (const item of bucket.data) {
+        yield item;
+      }
+    }
+  }
+
   private findEnd(data: T[], ts: number) {
     if (data.length === 0) {
       return -1;
