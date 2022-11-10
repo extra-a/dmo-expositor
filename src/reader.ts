@@ -39,6 +39,21 @@ export class GameReader {
       return;
     }
     switch(data.msg) {
+      case 'N_WELCOME':
+        for (const ev of data.data) {
+          this.parseEvent(ev);
+        }
+        return;
+      case 'N_INITCLIENT': {
+        const { cn, name } = data;
+        this.addName(cn, name);
+        return;
+      }
+      case 'N_SWITCHNAME': {
+        const { cn, name } = data;
+        this.addName(cn, name);
+        return;
+      }
       case 'N_POS': {
         if (this.isPause) {
           return;
@@ -126,11 +141,7 @@ export class GameReader {
   }
 
   private addEvent(ev: GameEvent, cn: number) {
-    let cnData = this.data.get(cn);
-    if (!cnData) {
-      cnData = new CnData();
-      this.data.set(cn, cnData);
-    }
+    let cnData = this.getCnData(cn);
     switch(ev.type) {
       case 'POS': {
         cnData.pos.add(ev);
@@ -145,5 +156,19 @@ export class GameReader {
         return;
       }
     }
+  }
+
+  private addName(cn: number, name: string) {
+    let cnData = this.getCnData(cn);
+    cnData.names.push(name);
+  }
+
+  private getCnData(cn: number) {
+    let cnData = this.data.get(cn);
+    if (!cnData) {
+      cnData = new CnData();
+      this.data.set(cn, cnData);
+    }
+    return cnData;
   }
 }
