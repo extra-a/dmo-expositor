@@ -106,7 +106,8 @@ export class GameState {
     const teams = [...new Set([...this.state.values()].flatMap(val => val.teams))];
     const map = this.map;
     const mode = this.mode;
-    const res = this.fileName ? { players, teams, map, mode, file: this.fileName } : { players, teams, map, mode };
+    const gametime = Math.trunc(this.maxTimestamp / 1000);
+    const res = this.fileName ? { players, teams, map, mode, gametime, file: this.fileName } : { players, teams, map, mode, gametime };
     return res;
   }
 
