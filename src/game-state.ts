@@ -1,5 +1,5 @@
 import { GameData, InterpolatedValue, Ping, Position, Vec3, GameEvent } from "./types.js";
-import itree from 'node-interval-tree'
+import itree from 'node-interval-tree';
 const IntervalTree = itree.default;
 
 export type FilterItem<T> = Array<NonNullable<T>>;
@@ -11,7 +11,7 @@ export type Offsets = {
 };
 
 export class GameState {
-  constructor(public state: GameData, public maxTimestamp: number) {
+  constructor(public state: GameData, public maxTimestamp: number, public map: string, public mode: number, public fileName?: string) {
   }
 
   getPing(cn: number, ts: number): InterpolatedValue<Ping> | void {
@@ -80,7 +80,18 @@ export class GameState {
     return tree;
   }
 
-  reduceFiltered<T, U>(filter: Filter<U>, initial: T, fn: (acc: T, ts: number, filterData: FilterItem<U>) => T, resolution = 1) {
+  narrowFilterByFilter<T, U>(primary: Filter<T>, secondary: Filter<U>) {
+    const tree: Filter<NonNullable<T>> = new IntervalTree();
+    for (const dataPrimary of primary.inOrder()) {
+      const dataSecondary = secondary.search(dataPrimary.low, dataPrimary.high);
+      if (dataSecondary && dataSecondary.length > 0) {
+        tree.insert(dataPrimary.low, dataPrimary.high, dataPrimary.data);
+      }
+    }
+    return tree;
+  }
+
+  reduceFilteredTime<T, U>(filter: Filter<U>, initial: T, fn: (acc: T, ts: number, filterData: FilterItem<U>) => T, resolution = 1) {
     let acc = initial;
     for (const intervalData of filter.inOrder()) {
       for (let ts = intervalData.low; ts <= intervalData.high; ts+=resolution) {
@@ -88,6 +99,15 @@ export class GameState {
       }
     }
     return acc;
+  }
+
+  getGameDescription() {
+    const players = [...new Set([...this.state.values()].flatMap(val => val.names))];
+    const teams = [...new Set([...this.state.values()].flatMap(val => val.teams))];
+    const map = this.map;
+    const mode = this.mode;
+    const res = this.fileName ? { players, teams, map, mode, file: this.fileName } : { players, teams, map, mode };
+    return res;
   }
 
   private interpolatePing(timestamp: number, [start, end]: [Ping, Ping]): InterpolatedValue<Ping> {
@@ -101,9 +121,9 @@ export class GameState {
   }
 
   private interpolatePos(timestamp: number, [start, end]: [Position, Position], adjust: number): InterpolatedValue<Position> {
-    const [yaw, pitch, roll] = (['yaw', 'pitch', 'roll'] as const).map((prop) => {
-      return this.linInterpolate(timestamp, start.timestamp, start[prop], end.timestamp, end[prop]);
-    });
+    const pitch = this.linInterpolate(timestamp, start.timestamp, start.pitch, end.timestamp, end.pitch);
+    const yaw = this.circleInterpolate(timestamp, start.timestamp, start.yaw, end.timestamp, end.yaw);
+    const roll = this.linInterpolate(timestamp, start.timestamp, start.roll, end.timestamp, end.roll);
     const pos = this.interpolateVec3(timestamp, start.pos, start.timestamp, end.pos, end.timestamp);
     const vel = this.interpolateVec3(timestamp, start.vel, start.timestamp, end.vel, end.timestamp);
 
@@ -121,6 +141,12 @@ export class GameState {
 
   private interpolateVec3(timestamp: number, start: Vec3, startTime: number, end: Vec3, endTime: number): Vec3 {
     return [0,1,2].map((idx) => this.linInterpolate(timestamp, startTime, start[idx], endTime, end[idx])) as Vec3;
+  }
+
+  private circleInterpolate(x: number, x0: number, y0: number, x1: number, y1: number) {
+    const shortest_angle = ((((y1 - y0) % 360) + 540) % 360) - 180;
+    const delta = (x-x0)/(x1-x0);
+    return shortest_angle * delta;
   }
 
   private linInterpolate(x: number, x0: number, y0: number, x1: number, y1: number): number {

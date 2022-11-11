@@ -60,6 +60,7 @@ export class CnData {
   pos: EvSeq<Position> = new EvSeq();
   game: GamePlayEvent[] = [];
   names: string[] = [];
+  teams: string[] = [];
 }
 
 export interface InterpolatedValue<T extends TimeStamped> {

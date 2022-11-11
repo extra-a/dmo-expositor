@@ -5,6 +5,8 @@ export class GameReader {
   private data: GameData = new Map();
   private spawned = new Set<number>();
   private maxTs = 0;
+  private mode = 0;
+  private map = '';
   private isPause = false;
 
   getStreamConsumer() {
@@ -17,8 +19,8 @@ export class GameReader {
     }
   }
 
-  getData() {
-    return new GameState(this.data, this.maxTs);
+  getGameState(filename?: string) {
+    return new GameState(this.data, this.maxTs, this.map, this.mode, filename);
   }
 
   private postProcess() {
@@ -44,14 +46,26 @@ export class GameReader {
           this.parseEvent(ev);
         }
         return;
+      case 'N_MAPCHANGE': {
+        const { name, mode } = data;
+        this.map = name;
+        this.mode = mode;
+        return;
+      }
       case 'N_INITCLIENT': {
-        const { cn, name } = data;
+        const { cn, name, team } = data;
         this.addName(cn, name);
+        this.addTeam(cn, team);
         return;
       }
       case 'N_SWITCHNAME': {
         const { cn, name } = data;
         this.addName(cn, name);
+        return;
+      }
+      case 'N_SETTEAM':{
+        const { cn, name } = data;
+        this.addTeam(cn, name );
         return;
       }
       case 'N_POS': {
@@ -161,6 +175,11 @@ export class GameReader {
   private addName(cn: number, name: string) {
     let cnData = this.getCnData(cn);
     cnData.names.push(name);
+  }
+
+  private addTeam(cn: number, name: string) {
+    let cnData = this.getCnData(cn);
+    cnData.teams.push(name);
   }
 
   private getCnData(cn: number) {
