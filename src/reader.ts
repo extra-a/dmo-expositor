@@ -1,4 +1,4 @@
-import { GameData, gunNames, GameEvent, CnData, GameMeta, TeamInfo } from "./types.js";
+import { GameData, gunNames, GameEvent, CnData, GameMeta, TeamInfo, modeName } from "./types.js";
 import { GameState } from "./game-state.js";
 
 export class GameReader {
@@ -58,7 +58,7 @@ export class GameReader {
       case 'N_MAPCHANGE': {
         const { name, mode } = data;
         this.meta.map = name;
-        this.meta.mode = mode;
+        this.meta.mode = modeName.get(mode) ?? mode;
         return;
       }
       case 'N_INITCLIENT': {
