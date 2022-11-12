@@ -8,6 +8,7 @@ async function main() {
   try {
     const argv = parseArgs(process.argv.slice(2));
     const filePath = argv._[0];
+    const nd = argv.ndjson;
     const isStdin = !filePath;
     const reader = new GameReader();
     await pipeline(
@@ -16,7 +17,11 @@ async function main() {
       reader.getStreamConsumer(),
     );
     const gameState = reader.getGameState(filePath);
-    console.log(JSON.stringify(gameState.getGameDescription(), null, 2));
+    if (!nd) {
+      console.log(JSON.stringify(gameState.getGameDescription(), null, 2));
+    } else {
+      console.log(JSON.stringify(gameState.getGameDescription()));
+    }
   } catch (e) {
     console.error(e);
     process.exit(-1);

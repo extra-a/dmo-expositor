@@ -56,9 +56,11 @@ export type GamePlayEvent = Shot | Hit | Damage | Kill | Died | Spawn;
 export type GameEvent = Position | Ping | Shot | Hit | Damage | Kill | Died | Spawn;
 
 export class CnData {
-  ping: EvSeq<Ping> = new EvSeq();
-  pos: EvSeq<Position> = new EvSeq();
+  ping = new EvSeq<Ping>();
+  pos = new EvSeq<Position>();
   game: GamePlayEvent[] = [];
+  frags = 0;
+  score = 0;
   names: string[] = [];
   teams: string[] = [];
 }
@@ -70,3 +72,17 @@ export interface InterpolatedValue<T extends TimeStamped> {
 }
 
 export type GameData = Map<number, CnData>;
+
+export class TeamInfo {
+  frags = 0;
+  players = new Set<string>();
+  score = 0;
+}
+
+export class GameMeta {
+  maxTs: number = 0;
+  map: string = '';
+  mode: number = 0;
+  filename: string = '';
+  teams = new Map<string, TeamInfo>();
+}

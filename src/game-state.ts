@@ -1,4 +1,4 @@
-import { GameData, InterpolatedValue, Ping, Position, Vec3, GameEvent } from "./types.js";
+import { GameData, InterpolatedValue, Ping, Position, Vec3, GameEvent, GameMeta } from "./types.js";
 import itree from 'node-interval-tree';
 const IntervalTree = itree.default;
 
@@ -11,7 +11,7 @@ export type Offsets = {
 };
 
 export class GameState {
-  constructor(public state: GameData, public maxTimestamp: number, public map: string, public mode: number, public fileName?: string) {
+  constructor(public state: GameData, public meta: GameMeta) {
   }
 
   getPing(cn: number, ts: number): InterpolatedValue<Ping> | void {
@@ -102,12 +102,18 @@ export class GameState {
   }
 
   getGameDescription() {
-    const players = [...new Set([...this.state.values()].flatMap(val => val.names))];
-    const teams = [...new Set([...this.state.values()].flatMap(val => val.teams))];
-    const map = this.map;
-    const mode = this.mode;
-    const gametime = Math.trunc(this.maxTimestamp / 1000);
-    const res = this.fileName ? { players, teams, map, mode, gametime, file: this.fileName } : { players, teams, map, mode, gametime };
+    const players = [...this.state.entries()].map(([cn, cnInfo]) => ({cn, names: [...new Set(cnInfo.names)], frags: cnInfo.frags, score: cnInfo.score }));
+    const map = this.meta.map;
+    const mode = this.meta.mode;
+    const gametime = Math.trunc(this.meta.maxTs / 1000);
+    const teams = [...this.meta.teams.entries()].filter(([,teamInfo]) => teamInfo.players.size > 0).map(([team, teamInfo]) => ({ team, ...teamInfo, players: [...teamInfo.players] }));
+    const res = { players, map, mode, gametime } as any;
+    if (teams && teams.length > 1) {
+      res.teams = teams;
+    }
+    if (this.meta.filename) {
+      res.file = this.meta.filename;
+    }
     return res;
   }
 

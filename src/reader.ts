@@ -1,12 +1,10 @@
-import { GameData, gunNames, GameEvent, CnData } from "./types.js";
+import { GameData, gunNames, GameEvent, CnData, GameMeta, TeamInfo } from "./types.js";
 import { GameState } from "./game-state.js";
 
 export class GameReader {
   private data: GameData = new Map();
+  private meta = new GameMeta();
   private spawned = new Set<number>();
-  private maxTs = 0;
-  private mode = 0;
-  private map = '';
   private isPause = false;
 
   getStreamConsumer() {
@@ -20,21 +18,32 @@ export class GameReader {
   }
 
   getGameState(filename?: string) {
-    return new GameState(this.data, this.maxTs, this.map, this.mode, filename);
+    if (filename) {
+      this.meta.filename = filename;
+    }
+    return new GameState(this.data, this.meta);
   }
 
   private postProcess() {
     const gameData: GameData = new Map();
+    const spawnedNames = new Set<string>();
     for (const cn of this.spawned) {
-      gameData.set(cn, this.data.get(cn)!);
+      const data = this.data.get(cn)!
+      gameData.set(cn, data);
+      const names = data.names;
+      names.forEach(name => spawnedNames.add(name));
+    }
+    for (const team of this.meta.teams.values()) {
+      const players = [...team.players.values()].filter(name => spawnedNames.has(name));
+      team.players = new Set(players);
     }
     this.data = gameData;
   }
 
   private parseEvent(data: any) {
     const {timestamp, cn} = data;
-    if (timestamp > this.maxTs) {
-      this.maxTs = timestamp;
+    if (timestamp > this.meta.maxTs) {
+      this.meta.maxTs = timestamp;
     }
     if (data.msg === 'N_PAUSEGAME') {
       this.isPause = data.isPause;
@@ -48,14 +57,15 @@ export class GameReader {
         return;
       case 'N_MAPCHANGE': {
         const { name, mode } = data;
-        this.map = name;
-        this.mode = mode;
+        this.meta.map = name;
+        this.meta.mode = mode;
         return;
       }
       case 'N_INITCLIENT': {
         const { cn, name, team } = data;
         this.addName(cn, name);
         this.addTeam(cn, team);
+        this.addTeamPlayer(team, name);
         return;
       }
       case 'N_SWITCHNAME': {
@@ -63,10 +73,27 @@ export class GameReader {
         this.addName(cn, name);
         return;
       }
-      case 'N_SETTEAM':{
+      case 'N_SETTEAM': {
         const { cn, name } = data;
-        this.addTeam(cn, name );
+        this.addTeam(cn, name);
+        const cnData = this.getCnData(cn);
+        if (cnData) {
+          const player = cnData.names[cnData.names.length - 1];
+          if (player) {
+            this.addTeamPlayer(name, player);
+          }
+        }
         return;
+      }
+      case 'N_SCOREFLAG': {
+        const { ocn, team, score, oflags } = data;
+        const teamName = team === 1 ? 'good' : (team === 2 ? 'evil' : '');
+        this.addTeamScore(teamName, score);
+        const cnData = this.getCnData(ocn);
+        if (cnData) {
+          cnData.score = oflags;
+        }
+        return
       }
       case 'N_POS': {
         if (this.isPause) {
@@ -124,7 +151,7 @@ export class GameReader {
         return;
       }
       case 'N_DIED': {
-        let { tcn, acn } = data;
+        let { tcn, acn, frags, tfrags} = data;
         const ev1 = {
           type: 'KILL' as const,
           timestamp,
@@ -137,6 +164,14 @@ export class GameReader {
         }
         this.addEvent(ev1, acn);
         this.addEvent(ev2, tcn);
+        const acnData = this.getCnData(acn);
+        if (acnData) {
+          const team = acnData.teams[acnData.teams.length - 1];
+          if (team) {
+            this.addTeamFrags(team, tfrags);
+          }
+        }
+        this.addFrags(acn, frags);
         return;
       }
       case 'N_SPAWN': {
@@ -182,6 +217,11 @@ export class GameReader {
     cnData.teams.push(name);
   }
 
+  private addFrags(cn: number, frags: number) {
+    let cnData = this.getCnData(cn);
+    cnData.frags = frags;
+  }
+
   private getCnData(cn: number) {
     let cnData = this.data.get(cn);
     if (!cnData) {
@@ -189,5 +229,29 @@ export class GameReader {
       this.data.set(cn, cnData);
     }
     return cnData;
+  }
+
+  private addTeamFrags(name: string, frags: number) {
+    const teamInfo = this.getTeamData(name);
+    teamInfo.frags = frags;
+  }
+
+  private addTeamScore(name: string, score: number) {
+    const teamInfo = this.getTeamData(name);
+    teamInfo.score = score;
+  }
+
+  private addTeamPlayer(team: string, player: string) {
+    const teamInfo = this.getTeamData(team);
+    teamInfo.players.add(player);
+  }
+
+  private getTeamData(name: string) {
+    let teamData = this.meta.teams.get(name);
+    if (!teamData) {
+      teamData = new TeamInfo();
+      this.meta.teams.set(name, teamData);
+    }
+    return teamData;
   }
 }
