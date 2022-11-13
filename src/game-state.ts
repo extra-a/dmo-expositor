@@ -153,7 +153,8 @@ export class GameState {
   private circleInterpolate(x: number, x0: number, y0: number, x1: number, y1: number) {
     const shortest_angle = ((((y1 - y0) % 360) + 540) % 360) - 180;
     const delta = (x-x0)/(x1-x0);
-    return shortest_angle * delta;
+    const a = y0 + shortest_angle * delta;
+    return a < 0 ? 360 + a : a % 360;
   }
 
   private linInterpolate(x: number, x0: number, y0: number, x1: number, y1: number): number {

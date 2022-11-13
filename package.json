@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node build/src/main.js",
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json --declaration",
     "package": "esbuild ./src/main.ts --bundle --platform=node --outfile=dist/main.cjs && pkg ./dist/main.cjs --out-path=./build -t latest-linux --compress GZip",
     "build:watch": "tsc -w -p tsconfig.json"
   },
