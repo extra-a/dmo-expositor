@@ -107,7 +107,7 @@ export class GameReader {
         this.addEvent(ev, cn);
         return;
       }
-      case 'N_PING': {
+      case 'N_CLIENTPING': {
         if (this.isPause) {
           return;
         }
