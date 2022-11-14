@@ -2,8 +2,8 @@ import { GameData, InterpolatedValue, Ping, Position, Vec3, GameEvent, GameMeta 
 import itree from 'node-interval-tree';
 const IntervalTree = itree.default;
 
-export type FilterItem<T> = Array<NonNullable<T>>;
-export type Filter<T> = itree.default<FilterItem<T>>;
+export type Filter<T> = itree.default<T>;
+
 export type Offsets = {
   before: number;
   after: number;
@@ -54,10 +54,10 @@ export class GameState {
   }
 
   makeEventFilter<T>(cn: number, filter: (ev: GameEvent) => T, offseter?: (data: T) => Offsets, kind: 'game' | 'pos' = 'game') {
-    const tree: Filter<NonNullable<T>> = new IntervalTree();
+    const tree: Filter<(NonNullable<T>)[]> = new IntervalTree();
     let prevStart = 0;
     let prevEnd = 0;
-    let prevEv: FilterItem<T> = [];
+    let prevEv: NonNullable<T>[] = [];
     for (const ev of this.state.get(cn)![kind]) {
       const data = filter(ev);
       if (data != null) {
@@ -80,18 +80,22 @@ export class GameState {
     return tree;
   }
 
-  narrowFilterByFilter<T, U>(primary: Filter<T>, secondary: Filter<U>) {
-    const tree: Filter<NonNullable<T>> = new IntervalTree();
+  narrowFilterByFilter<T, U, V = T>(primary: Filter<T>, secondary: Filter<U>, merger?: (a: T, b: U) => V) {
+    const tree = new IntervalTree<V>();
     for (const dataPrimary of primary.inOrder()) {
-      const dataSecondary = secondary.search(dataPrimary.low, dataPrimary.high);
+      const dataSecondary = secondary.search(dataPrimary.low, dataPrimary.high).flat();
       if (dataSecondary && dataSecondary.length > 0) {
-        tree.insert(dataPrimary.low, dataPrimary.high, dataPrimary.data);
+        if (merger) {
+          tree.insert(dataPrimary.low, dataPrimary.high, merger(dataPrimary.data, dataSecondary as any));
+        } else {
+          tree.insert(dataPrimary.low, dataPrimary.high, dataPrimary.data as any);
+        }
       }
     }
     return tree;
   }
 
-  reduceFilteredTime<T, U>(filter: Filter<U>, initial: T, fn: (acc: T, ts: number, filterData: FilterItem<U>) => T, resolution = 1) {
+  reduceFilteredTime<T, U>(filter: Filter<U>, initial: T, fn: (acc: T, ts: number, filterData: U) => T, resolution = 1) {
     let acc = initial;
     for (const intervalData of filter.inOrder()) {
       for (let ts = intervalData.low; ts <= intervalData.high; ts+=resolution) {
