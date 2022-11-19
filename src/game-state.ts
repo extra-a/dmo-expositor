@@ -26,11 +26,8 @@ export class GameState {
     return this.interpolatePing(ts, vals);
   }
 
-  getPos(cn: number, ts: number, adjustToCn?: number): InterpolatedValue<Position> | void {
+  getPos(cn: number, ts: number): InterpolatedValue<Position> | void {
     let adjust = 0;
-    if (adjustToCn) {
-      adjust = this.getAdjust(adjustToCn, ts);
-    }
 
     const cnData = this.state.get(cn);
     if (!cnData) {
@@ -41,16 +38,6 @@ export class GameState {
       return;
     }
     return this.interpolatePos(ts, vals, adjust);
-  }
-
-  getAdjust(adjustToCn: number, ts: number) {
-    let adjust = 0;
-    const ping = this.getPing(adjustToCn, ts);
-    if (ping) {
-      adjust -= ping.value.ping / 2;
-    }
-    adjust -= 34/2 // server tick avg delay approximation
-    return adjust;
   }
 
   makeEventFilter<T>(cn: number, filter: (ev: GameEvent) => T, offseter?: (data: T) => Offsets, kind: 'game' | 'pos' = 'game') {
