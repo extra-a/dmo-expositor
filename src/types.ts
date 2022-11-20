@@ -112,3 +112,22 @@ export class GameMeta {
   filename = '';
   teams = new Map<string, TeamInfo>();
 }
+
+export interface GameInfo {
+  players: {
+    cn: number,
+    names: string[],
+    frags: number,
+    score: number,
+  }[];
+  map: string;
+  mode: string;
+  gametime: number;
+  teams?: {
+    players: string[],
+    frags: number,
+    score: number,
+    team: string,
+  }[];
+  file?: string;
+}
