@@ -93,7 +93,6 @@ export class CnData {
 
 export interface InterpolatedValue<T extends TimeStamped> {
   value: T;
-  adjust: number;
   rawInterval: [T, T];
 }
 

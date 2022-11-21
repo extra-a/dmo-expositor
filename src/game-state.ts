@@ -19,23 +19,23 @@ export class GameState {
     if (!cnData) {
       return;
     }
-    const vals = cnData.ping.getInterval(ts)
+    const vals = cnData.ping.getInterval(ts);
     if (!vals) {
       return;
     }
     return this.interpolatePing(ts, vals);
   }
 
-  getPos(cn: number, ts: number, adjust = 0): InterpolatedValue<Position> | void {
+  getPos(cn: number, ts: number): InterpolatedValue<Position> | void {
     const cnData = this.state.get(cn);
     if (!cnData) {
       return;
     }
-    const vals = cnData.pos.getInterval(ts + adjust);
+    const vals = cnData.pos.getInterval(ts);
     if (!vals) {
       return;
     }
-    return this.interpolatePos(ts, vals, adjust);
+    return this.interpolatePos(ts, vals);
   }
 
   makeEventFilter<T>(cn: number, filter: (ev: GameEvent) => T, offseter?: (data: T) => Offsets, kind: 'game' | 'pos' = 'game') {
@@ -143,10 +143,10 @@ export class GameState {
       timestamp,
       ping,
     }
-    return { value, adjust: 0, rawInterval: [start, end]};
+    return { value, rawInterval: [start, end]};
   }
 
-  private interpolatePos(timestamp: number, [start, end]: [Position, Position], adjust: number): InterpolatedValue<Position> {
+  private interpolatePos(timestamp: number, [start, end]: [Position, Position]): InterpolatedValue<Position> {
     const pitch = this.linInterpolate(timestamp, start.timestamp, start.pitch, end.timestamp, end.pitch);
     const yaw = this.circleInterpolate(timestamp, start.timestamp, start.yaw, end.timestamp, end.yaw);
     const roll = this.linInterpolate(timestamp, start.timestamp, start.roll, end.timestamp, end.roll);
@@ -162,7 +162,7 @@ export class GameState {
       pos,
       vel
     }
-    return { value, adjust, rawInterval: [start, end]};
+    return { value, rawInterval: [start, end]};
   }
 
   private interpolateVec3(timestamp: number, start: Vec3, startTime: number, end: Vec3, endTime: number): Vec3 {
