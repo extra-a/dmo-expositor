@@ -22,6 +22,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
+    "mathjs": "^11.5.0",
     "minimist": "^1.2.7",
     "ndjson": "^2.0.0",
     "node-interval-tree": "^2.0.1"
