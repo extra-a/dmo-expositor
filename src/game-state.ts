@@ -65,7 +65,7 @@ export class GameState {
     return tree;
   }
 
-  narrowFilterByFilter<T, U, V = T>(primary: Filter<T[]>, secondary: Filter<U[]>, merger?: (a: T[], b: U[]) => NonNullable<V>[]) {
+  filterAnd<T, U, V = T>(primary: Filter<T[]>, secondary: Filter<U[]>, merger?: (a: T[], b: U[]) => NonNullable<V>[]) {
     const tree: Filter<NonNullable<V>[]> = new IntervalTree();
     for (const dataPrimary of primary.inOrder()) {
       const dataSecondary = secondary.search(dataPrimary.low, dataPrimary.high).flat();
@@ -75,6 +75,17 @@ export class GameState {
         } else {
           tree.insert(dataPrimary.low, dataPrimary.high, dataPrimary.data as any);
         }
+      }
+    }
+    return tree;
+  }
+
+  filterAndNot<T, U>(primary: Filter<T[]>, secondary: Filter<U[]>) {
+    const tree: Filter<NonNullable<T>[]> = new IntervalTree();
+    for (const dataPrimary of primary.inOrder()) {
+      const dataSecondary = secondary.search(dataPrimary.low, dataPrimary.high).flat();
+      if (dataSecondary && dataSecondary.length === 0) {
+        tree.insert(dataPrimary.low, dataPrimary.high, dataPrimary.data as any);
       }
     }
     return tree;
